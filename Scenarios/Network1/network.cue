@@ -1,33 +1,31 @@
 package algo
 
-let Wallet1 = "Wallet1"
-let Wallet2 = "Wallet2"
-let Wallet3 = "Wallet3"
+let Account1 = "Account1"
+let Account2 = "Account2"
+let Account3 = "Account3"
 
 Network: {
 
-	#Network //Specification
+	// This struct conforms to schema #Network
+	#Network
 
 	// Network name
-	name: "Example1"
-
-	// Local directory to store the network to
-	directory: "bin/networks/\(Network.name)"
+	name: "Network1"
 
 	// The network template expected by: goal network create -t
 	template: {
 		Genesis: {
 			NetworkName: Network.name
 			Wallets: [{
-				Name:   Wallet1
+				Name:   Account1
 				Stake:  50
 				Online: true
 			}, {
-				Name:   Wallet2
+				Name:   Account2
 				Stake:  40
 				Online: true
 			}, {
-				Name:   Wallet3
+				Name:   Account3
 				Stake:  10
 				Online: false
 			}]
@@ -36,16 +34,16 @@ Network: {
 			Name:    "Primary"
 			IsRelay: true
 			Wallets: [{
-				Name:              Wallet1
+				Name:              Account1
 				ParticipationOnly: false
 			}]
 		}, {
-			Name: "Node"
+			Name: "Node1"
 			Wallets: [{
-				Name:              Wallet2
+				Name:              Account2
 				ParticipationOnly: false
 			}, {
-				Name:              Wallet3
+				Name:              Account3
 				ParticipationOnly: false
 			}]
 		}]

@@ -1,0 +1,71 @@
+#! /usr/bin/env python3
+
+import os
+import click
+from algosdk import kmd
+from algosdk.v2client import algod
+from algosdk.wallet import Wallet
+import pdb
+
+from cli import wallet, account, app
+
+# Constants
+ALGOD_NET = "algod.net"
+ALGOD_TOKEN = "algod.token"
+
+KMD_NET = "kmd.net"
+KMD_TOKEN = "kmd.token"
+
+
+class Clients(object):
+    def __init__(self, data_dir, algod, kcl):
+        self.node = data_dir.split("/")[-1]
+        self.algod = algod
+        self.kcl = kcl
+
+
+@click.group()
+@click.option(
+    "-d", "data_dir", required=True, type=click.Path(exists=True, dir_okay=True)
+)
+@click.pass_context
+def algo(ctx, data_dir):
+
+    with open(os.path.join(data_dir, ALGOD_TOKEN)) as f:
+        algod_token = f.read().strip()
+
+    with open(os.path.join(data_dir, ALGOD_NET)) as f:
+        algod_address = "http://{}".format(f.read().strip())
+
+    algod_client = algod.AlgodClient(algod_token, algod_address)
+
+    # Get kmd directory
+    kmd_dirnames = [i for i in os.listdir(data_dir) if i.startswith("kmd")]
+    assert len(kmd_dirnames) == 1, "Expected to find one kmd dir, found: {}".format(
+        kmd_dirnames
+    )
+    kmd_dir = os.path.join(data_dir, kmd_dirnames[0])
+
+    # Get kmd network address
+    kmd_net_file = os.path.join(kmd_dir, KMD_NET)
+    assert os.path.exists(kmd_net_file), "Could not find {}".format(kmd_net_file)
+    with open(kmd_net_file, "r") as f:
+        kmd_addr = "http://{}".format(f.read().strip())
+
+    # Get kmd token
+    kmd_token_file = os.path.join(kmd_dir, KMD_TOKEN)
+    assert os.path.exists(kmd_token_file), "Could not find {}".format(kmd_token_file)
+    with open(kmd_token_file, "r") as f:
+        kmd_token = f.read().strip()
+
+    kmd_client = kmd.KMDClient(kmd_token, kmd_addr)
+
+    ctx.obj = Clients(data_dir, algod_client, kmd_client)
+
+
+algo.add_command(wallet.wallet)
+algo.add_command(account.account)
+algo.add_command(app.app)
+
+if __name__ == "__main__":
+    algo()
