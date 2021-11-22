@@ -2,15 +2,11 @@
 
 ## Overview
 
-This is a framework for defining and running scenarios on Algorand. Before you can run a scenario, you need to set up the components of the system, including a local private Algorand network, a set of wallets and accounts, initial balances, and applications.  When done manually, this setup requires numerous steps and tools. This framework allows you to define and run that setup in an automatic and reproducible way.
+This solution presents a framework for defining and running scenarios on Algorand. Before you can run a scenario, you need to set up the components of the system, including a local private Algorand network, a set of wallets and accounts, initial balances, and applications.  When done manually, this setup requires numerous steps and tools. This framework allows you to define and run that setup in an automatic and reproducible way.
 
 Moreover, suppose you want to define many scenarios. You will need a way to stay organized, minimize duplication, and focus only on the details that vary from one scenario to the next. We'll use [Cuelang](https://cuelang.org/) as the primary tool for achieving these goals. We'll also use python, the [click](https://click.palletsprojects.com/en/8.0.x/) cli library, and `py-algorand-sdk` to create a simple `algo` cli tool. This will provide commands similar to what `goal` provides, but without the interactive authentication prompts.
 
 ## Table of Contents
-
-- [Provisioning Algorand Systems and Scenarios with Cuelang](#provisioning-algorand-systems-and-scenarios-with-cuelang)
-  - [Overview](#overview)
-  - [Table of Contents](#table-of-contents)
   - [1. Introduction](#1-introduction)
   - [2. Code Tour](#2-code-tour)
     - [2.1 Cue Configuration](#21-cue-configuration)
@@ -34,12 +30,15 @@ Moreover, suppose you want to define many scenarios. You will need a way to stay
   - [6. Additional Scenarios](#6-additional-scenarios)
     - [6.1 Defining Scenarios/Network2/Scenario2](#61-defining-scenariosnetwork2scenario2)
     - [6.2 Running Scenarios/Network2/Scenario2](#62-running-scenariosnetwork2scenario2)
-  - [6. Resources](#6-resources)
+  - [7. Conclusion](#7-conclusion)
+  - [8. Resources](#8-resources)
 
 ## 1. Introduction
+You can find the source code for this solution here: https://github.com/eadlam/cue-algorand-provision
+
 This repo contains three main things: an `apps` directory where smart contracts are defined, a `cli` directory where we define a few commands similar to what `goal` provides, and a `Scenarios` directory which contains network and scenario specifications. 
 
-`Scenarios/Network1/Scenario1` is a minimal example where we only provision a local private network. `Scenarios/Network2` contains two complex scenarios where we provision a local private network, users, initial balances, and applications. These complex scenarios demonstrate that we can:
+**Scenarios/Network1/Scenario1** is a minimal example where we only provision a local private network. **Scenarios/Network2** contains two complex scenarios where we provision a local private network, users, initial balances, and applications. These complex scenarios demonstrate that we can:
 
 * Provision a local private network, an unencrypted Faucet wallet, a set of users (regular encrypted wallets with accounts), and compile pyteal apps with:
 ```
@@ -74,7 +73,7 @@ $ cue down ./Scenarios/[network]/[scenario]
 
 This is the heart of the solution, where we define the network, wallet/account, and app topologies for a variety of scenarios. 
 
-Additionally, the `cmd_*.cue` and `cue_tool.cue` files define custom cue cli commands executed with `cue [cmd] [scenario]`.
+Additionally, the **cmd_*.cue** and **cue_tool.cue** files define custom cue cli commands executed with `cue [cmd] [scenario]`.
 ```
 └── Scenarios
     ├── cmd_accounts.cue
@@ -101,7 +100,7 @@ Additionally, the `cmd_*.cue` and `cue_tool.cue` files define custom cue cli com
 ```
 
 ### 2.2 Pyteal Applications
- Applications will go under `apps/[appName]` and will always have at least two files named `approval.py` and `clear_state.py`:
+ Applications will go under **apps/[appName]** and will always have at least two files named **approval.py** and **clear_state.py**:
 ```
 └── apps
     ├── AppA
@@ -120,7 +119,7 @@ Additionally, the `cmd_*.cue` and `cue_tool.cue` files define custom cue cli com
 ```
 This will allow us to iterate over the directory and compile applications with `python3 -m apps.[appName].approval` and `python3 -m apps.[appName].clear_state`. 
 
-Compiled teal files will be saved under `bin/apps`:
+Compiled teal files will be saved under **bin/apps**:
 ```
 └── bin
     └── apps
@@ -165,39 +164,54 @@ This solution was developed and tested on Ubuntu and ought to work for any linux
 ### 4.1 Standard Method: `goal network create`
 Let's start with a simple scenario which only includes features supported by the `goal network create` command. This command takes a template file in which you specify nodes, accounts, and initial stakes. For example: 
 ```json
-Genesis: {
-    NetworkName: "Network1"
-    Wallets: [{
-        Name:   "Account1"
-        Stake:  50
-        Online: true
-    }, {
-        Name:   "Account2"
-        Stake:  40
-        Online: true
-    }, {
-        Name:   "Account3"
-        Stake:  10
-        Online: false
-    }]
+{
+    "Genesis": {
+        "NetworkName": "Network1",
+        "Wallets": [
+            {
+                "Name": "Account1",
+                "Stake": 50,
+                "Online": true
+            },
+            {
+                "Name": "Account2",
+                "Stake": 40,
+                "Online": true
+            },
+            {
+                "Name": "Account3",
+                "Stake": 10,
+                "Online": false
+            }
+        ]
+    },
+    "Nodes": [
+        {
+            "Name": "Primary",
+            "IsRelay": true,
+            "Wallets": [
+                {
+                    "Name": "Account1",
+                    "ParticipationOnly": false
+                }
+            ]
+        },
+        {
+            "Name": "Node1",
+            "Wallets": [
+                {
+                    "Name": "Account2",
+                    "ParticipationOnly": false
+                },
+                {
+                    "Name": "Account3",
+                    "ParticipationOnly": false
+                }
+            ]
+        }
+    ]
 }
-Nodes: [{
-    Name:    "Primary"
-    IsRelay: true
-    Wallets: [{
-        Name:              "Account1"
-        ParticipationOnly: false
-    }]
-}, {
-    Name: "Node1"
-    Wallets: [{
-        Name:              "Account2"
-        ParticipationOnly: false
-    }, {
-        Name:              "Account3"
-        ParticipationOnly: false
-    }]
-}]
+
 ``` 
 > Note: `Wallets:[]` is actually a list of accounts. `goal network create` will create a single wallet on each node called `unencrypted-default-wallet` and the accounts will be added under that wallet on the specified node.
 
@@ -218,9 +232,9 @@ $ goal account list -d ./networks/Network1/Primary
 ```
 
 ### 4.2 Using Cue Configs
-Those arguments can be tedious to keep track of, and are a good candidate for configuration. Let's look at the the cue file that defines this template:
+Those arguments can be tedious to keep track of, and are a good candidate for configuration. Let's look at the cue file that defines this template:
 
-`./Scenarios/Network1/network.cue`
+**./Scenarios/Network1/network.cue**
 ```go
 package algo
 
@@ -276,15 +290,15 @@ Network: {
 }
 
 ```
-There are a few additions that differentiate this from the pure json template:
+There are a few additions that differentiate this from the json template:
 
-1. We've created constants for the account names to avoid mispellings across occurances.
+1. We've created constants for the account names to avoid misspelling across occurrences.
 2. The template is inside a parent `Network` struct. This will be convenient later, as we'll have three top-level structs (`Network`, `Users`, `Apps`). We have the network name easily accessible under `Network.name` and the template under `Network.template`.
 3. `Network` conforms to specification `#Network`, which ensures we don't have any errors in the configuration.
 
 The `#Network` specification is defined in:
 
-`./Scenarios/specifications.cue`:
+**./Scenarios/specifications.cue**:
 ```go
 #Network: {
 	// Network name
@@ -333,7 +347,7 @@ Created new partkey: /home/eadlam/Projects/cue-algorand-provision/bin/networks/N
 Network Network1 created under /home/eadlam/Projects/cue-algorand-provision/bin/networks/Network1
 ``` 
 
-You can look at the source code (`./Scenarios/cmd_up.cue`) to see everything defined for this command, but since commands are simply cue configurations, an easy way to see what it's doing is to query `command.up` with cue:
+You can look at the source code (**./Scenarios/cmd_up.cue**) to see everything defined in this command, but since commands are simply cue configurations, an easy way to see what it's doing is to query `command.up` with cue:
 
 ```
 $ cue eval ./Scenarios/Network1/Scenario1 -e '{for k, v in command.up {"\(k)": v.$id}}'
@@ -374,19 +388,20 @@ materialize:       "bin/materialized/Network1.json"
 write_cue_genesis: "Scenarios/Network1/Scenario1/instance/genesis.cue"
 ```
 
-The `materialize` task saves `Network.template` as a json file to `bin/materialized/Network1.json`. Then, the `network_create` task passes that path to `goal network create`.
+The `materialize` task saves `Network.template` as a json file to **bin/materialized/Network1.json**. Then, the `network_create` task passes that path to `goal network create`.
 
-After the network is created, we read in the `bin/networks/Network1/genesis.json` file created by `goal network create` and save it back to a cue file under `./Scenarios/Network1/Scenario1/instance`. 
+After the network is created, we read in the **bin/networks/Network1/genesis.json** file created by `goal network create` and save it back to a cue file under **./Scenarios/Network1/Scenario1/instance**. 
 
 
 ### 4.4 Saving Instance Data
 This general pattern of capturing instance data and saving it back to cue gives us a powerful method for introspecting the network, and to some extent, simulating a service backend without the need to manage a service or a database.
 
-In this case, we saved the genesis data to `./Scenarios/Network1/Scenario1/instance/genesis.cue`, and used a struct comprehension to create a conveniently formatted account list under `GenesisAccounts`. We can query it with `eval` or `export`. Let's export it to yaml for readability: 
+In this case, we saved the genesis data to **./Scenarios/Network1/Scenario1/instance/genesis.cue**, and used a struct comprehension to create a conveniently formatted account list under `GenesisAccounts`. We can query it with `eval` or `export`. Let's export it to yaml for readability: 
 
-```
-$ cue export ./Scenarios/Network1/Scenario1/instance -e GenesisAccounts --out yaml
-```
+
+`$ cue export ./Scenarios/Network1/Scenario1/instance -e GenesisAccounts --out yaml`
+
+
 ```yaml
 RewardsPool:
   addr: 7777777777777777777777777777777777777777777777777774MSJUVU
@@ -439,7 +454,7 @@ status: "goal network status -r bin/networks/Network1"
 
 There is one `exec.Run` task, which simply runs `goal network status`. Let's look at the output:
 
-```
+``` bash
 $ cue status ./Scenarios/Network1/Scenario1
 
 [Node1]
@@ -477,6 +492,7 @@ We see that `cue wallets` runs `goal wallet list` once for each node defined in 
 Output:
 ```
 $ cue wallets ./Scenarios/Network1/Scenario1/instance
+
 Node1 wallets:
 ##################################################
 Wallet: unencrypted-default-wallet
@@ -574,9 +590,9 @@ Now let's look at a more complex example.
 
 ### 5.1 Scenarios/Network2
 
-`Scenarios/Network2` will only have a single unencrypted default account called `Faucet`, and we're adding a `config` for `Node1` which sets `EnableDeveloperAPI: true`. We'll use this to overwrite `./bin/networks/Network2/Node1/config.json` before starting the network.
+**Scenarios/Network2** will only have a single unencrypted default account called `Faucet`, and we're adding a `config` for `Node1` which sets `EnableDeveloperAPI: true`. We'll use this to overwrite **./bin/networks/Network2/Node1/config.json** before starting the network.
 
-`./Scenarios/Network2/network.cue`
+**./Scenarios/Network2/network.cue**
 ```go
 package algo
 
@@ -625,7 +641,7 @@ Network: #Network & {
 
 This time we will define some users:
 
-`./Scenarios/Network2/Scenario1/users.cue`
+**./Scenarios/Network2/Scenario1/users.cue**
 ```go
 package algo
 
@@ -656,7 +672,7 @@ Users: #Users & {
 
 and an app:
 
-`./Scenarios/Network2/Scenario1/apps.cue`
+**./Scenarios/Network2/Scenario1/apps.cue**
 ```go
 package algo
 
@@ -665,11 +681,11 @@ Apps: AppA: [
 ]
 ```
 
-`Apps` is a struct where each key is the name of an app and the value is a list of accounts. For each account in the list, we will deploy the app as a transaction from that account.
+`Apps` is a struct where each key is the name of an app, and the value is a list of accounts. For each account in the list, we will deploy the app as a transaction from that account.
 
 ### 5.3 `cue up`
 
-This time when we run cue up, we have some new tasks for creating user accounts:
+This time when we run `cue up`, we have some new tasks for creating user accounts. Let's look at the tasks that will run:
 
 ```
 $ cue eval ./Scenarios/Network2/Scenario1 -e '{for k, v in command.up if v.$id == "tool/exec.Run" {"\(k)": v.cmd}}'
@@ -692,7 +708,7 @@ create_MariasWallet_secondary:  "./algo -d bin/networks/Network2/Node1 account n
 
 We're using a custom command in the `algo` cli tool to create the accounts (`./algo account new`), instead of `goal`,  so that we can avoid interactive prompts, and return json data for the newly created accounts.   
 
-After running `cue up ./Scenarios/Network2/Scenario1`, we can see a set of user files were written to `./Scenarios/Network2/Scenario1/instance`:
+After running `cue up ./Scenarios/Network2/Scenario1`, we can see a set of user files were written to **./Scenarios/Network2/Scenario1/instance**:
 
 ```
 └── Scenarios
@@ -712,6 +728,7 @@ Let's query this data with cue:
 
 ```yaml
 $ cue export ./Scenarios/Network2/Scenario1/instance --out yaml -e Users
+
 Silvio:
   name: Silvio
   wallets:
@@ -796,9 +813,7 @@ ID:     85c172cf56e9be6c1c20a69c0efbf832
 Wallet: unencrypted-default-wallet
 ID:     e47f8a7e600b2805e1f40cae7887d741
 ##################################################
-```
 
-```
 $ cue balances ./Scenarios/Network2/Scenario1/instance
 
 (Node1) MariasWallet:
@@ -836,7 +851,7 @@ fund_MariasWallet_primary:         "goal -d bin/networks/Network2/Node1 clerk se
 fund_MariasWallet_secondary:       "goal -d bin/networks/Network2/Node1 clerk send -w unencrypted-default-wallet -f KZYKDS266NCIO7J7RTGCN3MDGGJFADBT3H4VROPHKLKY34X6AWI7JPYW4U -t ACDCSHW3U2NUACOB7XXMT3Z7I5IVGVKJI2M22FVVMETY567NLR4E4MN6U4 -a  1000000000000000"
 ```
 
-It will transfer funds from the `unencrypted-default-wallet`, `Faucet` account to four user accounts (two users, each with two accounts). It will also deploy one app from one user account.
+It will transfer funds from the `unencrypted-default-wallet` (`Faucet` account) to four user accounts (two users, each with two accounts). It will also deploy one app from one user account.
 
 ```
 $ cue run ./Scenarios/Network2/Scenario1/instance
@@ -892,7 +907,7 @@ $ cue balances ./Scenarios/Network2/Scenario1/instance
 
 ```
 
-And that the application is deployed (some output is ommitted for readability):
+And that the application is deployed (some output is omitted for readability):
 ```
 $ cue accounts ./Scenarios/Network2/Scenario1/instance  
 
@@ -935,7 +950,7 @@ Now that we have this framework for defining, provisioning, and running scenario
 
 ### 6.1 Defining Scenarios/Network2/Scenario2
 
-`./Scenarios/Network2/Scenario2/users.cue`
+**./Scenarios/Network2/Scenario2/users.cue**
 ```go
 package algo
 
@@ -980,7 +995,7 @@ Users: #Users & {
 }
 ```
 
-`./Scenarios/Network2/Scenario2/apps.cue`
+**./Scenarios/Network2/Scenario2/apps.cue**
 ```
 package algo
 
@@ -1036,10 +1051,14 @@ $ cue balances ./Scenarios/Network2/Scenario2/instance
 
 $ cue down ./Scenarios/Network2/Scenario2
 ```
+## 7. Conclusion
+Cuelang is a powerful tool for specifying and validating configuration, importing and exporting a variety of data formats, and defining cli tools. This solution uses cuelang to provide a framework for provisioning and running local networks and user scenarios on Algorand. However, this article only presents a brief introduction to cuelang and it's potential for enhancing developer workflows with Algorand.
 
-## 6. Resources
+For further information, I recommend visiting the resources listed below. 
+
+## 8. Resources
 
 - [Cuelang Tutorials](https://cuelang.org/docs/tutorials/)
 - [The Logic of Cue](https://cuelang.org/docs/concepts/logic/)
+- [Cuelang Discussion Forum](https://github.com/cue-lang/cue/discussions)
 - [Algorand - Create A Private Network](https://developer.algorand.org/tutorials/create-private-network/)
-   
